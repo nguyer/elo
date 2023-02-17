@@ -1,28 +1,21 @@
-//create object with K-Factor(without it defaults to 32)
 import EloRank from "elo-rank";
-import { readCsv } from "./csv";
-var elo = new EloRank();
+import { readCsv } from "./csv.js";
+import { markdownTable } from "markdown-table";
+
+const inputPath = process.argv[2];
+if (!inputPath) {
+  console.error("Error: No game data provided\n\nUsage: elo <game_data.csv>");
+  process.exit(1);
+}
+
+const elo = new EloRank();
 
 const DEFAULT_RATING = 1500;
-
-var playerA = 1200;
-var playerB = 1400;
-
-//Gets expected score for first parameter
-var expectedScoreA = elo.getExpected(playerA, playerB);
-var expectedScoreB = elo.getExpected(playerB, playerA);
-
-//update score, 1 if won 0 if lost
-playerA = elo.updateRating(expectedScoreA, 1, playerA);
-playerB = elo.updateRating(expectedScoreB, 0, playerB);
-
-console.log(playerA);
-console.log(playerB);
 
 const rankings = new Map<string, number>([]);
 
 const computeElo = async () => {
-  const games = await readCsv("./games.csv");
+  const games = await readCsv(inputPath);
 
   for (const game of games) {
     const previousWinnerRating = rankings.get(game.winner) || DEFAULT_RATING;
@@ -49,8 +42,16 @@ const computeElo = async () => {
     rankings.set(game.loser, updatedLoserRating);
   }
 
-  const mapSort1 = new Map([...rankings.entries()].sort((a, b) => b[1] - a[1]));
-  return mapSort1;
+  const sortedRankings = new Map(
+    [...rankings.entries()].sort((a, b) => b[1] - a[1])
+  );
+  const table = [["Name", "Elo"]];
+  for (const ranking of sortedRankings) {
+    table.push([ranking[0], ranking[1].toString()]);
+  }
+  return markdownTable(table);
 };
 
-computeElo().then(console.log);
+computeElo().then((res) => {
+  console.log(res + "\n");
+});
